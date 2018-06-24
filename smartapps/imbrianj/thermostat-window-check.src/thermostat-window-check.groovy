@@ -30,7 +30,8 @@ preferences {
   }
 
   section("Notifications") {
-    input "sendPushMessage", "enum", title: "Send a push notification?", metadata: [values: ["Yes", "No"]], required: false
+    input "sendOpenMessage", "enum", title: "Send a push notification when things are opened or closed?", metadata: [values: ["Yes", "No"]], required: false
+    input "sendPushMessage", "enum", title: "Send a push notification when thermostat is changed?", metadata: [values: ["Yes", "No"]], required: false
     input "phone", "phone", title: "Send a Text Message?", required: false
   }
 
@@ -76,7 +77,7 @@ def windowChange(evt) {
   def heating = thermostats.findAll { it?.latestValue("thermostatMode") == "heat" }
   def cooling = thermostats.findAll { it?.latestValue("thermostatMode") == "cool" }
 
-  if(heating || cooling) {
+  if((heating || cooling) and sendOpenMessage == "Yes") {
     def open = sensors.findAll { it?.latestValue("contact") == "open" }
     def tempDirection = heating ? "heating" : "cooling"
     def plural = open.size() > 1 ? "were" : "was"
@@ -103,7 +104,7 @@ def thermoShutOff() {
 
   log.info("Checking if we need to turn thermostats off")
 
-  if(open.size()) {
+  if(open.size() and sendPushMessage == "Yes") {
     send("Thermostats turned off: ${open.join(', ')} ${plural} open and thermostats ${tempDirection}.")
     log.info("Windows still open, turning thermostats off")
     thermostats?.off()
@@ -115,7 +116,7 @@ def thermoShutOff() {
 }
 
 private send(msg) {
-  if(sendPushMessage != "No") {
+  if(sendPushMessage == "Yes" or sendOpenMessage == "Yes") {
     log.debug("Sending push message")
     sendPush(msg)
   }
